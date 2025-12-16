@@ -1,5 +1,5 @@
-from app.models.product import Product, ProductStatus, ProductType
-from app.models.stock_adjustment import StockAdjustment, StockAdjustmentReason
+from app.models.product_table import Product, ProductStatus, ProductType
+from app.models.stock_adjustment_table import StockAdjustment, StockAdjustmentReason
 
 __all__ = [
     "Product",
