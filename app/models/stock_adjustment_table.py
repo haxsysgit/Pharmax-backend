@@ -20,9 +20,11 @@ class StockAdjustment(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid4()))
     product_id = Column(String(36), ForeignKey("products.id"), nullable=False, index=True)
 
+    # Delta applied to Product.quantity_on_hand (positive adds stock, negative removes stock).
     change_qty = Column(Integer, nullable=False)
     reason = Column(SAEnum(StockAdjustmentReason), nullable=False)
 
+    # Optional metadata for traceability (e.g. purchase invoice number, damaged goods note).
     reference = Column(String(255), nullable=True)
     note = Column(String(255), nullable=True)
     created_by_user_id = Column(String(36), nullable=True)
