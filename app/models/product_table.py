@@ -5,6 +5,7 @@ from sqlalchemy import Boolean, Column, DateTime, Enum as SAEnum, Float, Integer
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
+from app.models.product_unit_table import BaseUnit
 
 
 # High-level classification for your CSV TYPE column.
@@ -31,7 +32,7 @@ class Product(Base):
 
     # Product name; indexed for fast search in the invoice flow.
     name = Column(String(255), nullable=False, index=True)
-
+    base_unit = Column(SAEnum(BaseUnit), nullable=False, default=BaseUnit.PACK)
     # Optional metadata (your CSV often has blanks here).
     brand_name = Column(String(255), nullable=True)
     supplier_name = Column(String(255), nullable=True)
@@ -55,4 +56,8 @@ class Product(Base):
     # `cascade` controls what happens to adjustments when you operate on Product.
     adjustments = relationship(
         "StockAdjustment", back_populates="product", cascade="all, delete-orphan"
+    )
+
+    product_units = relationship(
+        "ProductUnit", back_populates="product", cascade="all, delete-orphan"
     )
