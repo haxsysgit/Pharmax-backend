@@ -7,6 +7,8 @@ from app.schemas.stock_adjustment_schema import AdjustStockResponse, CreateStock
 from app.db.session import get_db
 from app.models.product_table import Product as ProductTable
 from app.schemas.products_schema import CreateProduct, ReadProduct, UpdateProduct
+from app.models.product_unit_table import ProductUnit as ProductUnitTable
+from app.schemas.product_unit_schema import ReadProductUnit
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
@@ -48,8 +50,25 @@ def read_one_product(product_id:str, db:Session = Depends(get_db)):
     
     if not result:
         raise HTTPException(status_code=404,detail="Product not found")
+    
     return result
 
+
+@router.get("/{product_id}/units", response_model=list[ReadProductUnit])
+def read_product_units(product_id:str, db:Session = Depends(get_db)):
+    stmt = select(ProductUnitTable).where(ProductUnitTable.product_id == product_id)
+    result = db.execute(stmt).scalars().all()
+    return result
+
+@router.get("/{product_id}/units/{unit_id}", response_model = ReadProductUnit)
+def read_one_product_unit(product_id:str, unit_id:str, db:Session = Depends(get_db)):
+    stmt = select(ProductUnitTable).where(ProductUnitTable.id == unit_id, ProductUnitTable.product_id == product_id)
+    result = db.execute(stmt).scalars().one_or_none()
+    
+    if not result:
+        raise HTTPException(status_code=404,detail="This Unit doesn't belong to this product")
+
+    return result
 
 @router.post("/{product_id}/adjust-stock", response_model=AdjustStockResponse)
 def adjust_stock(product_id:str, payload:CreateStockAdjustment, db:Session = Depends(get_db)):
@@ -111,4 +130,3 @@ def delete_product(product_id:str, db:Session = Depends(get_db)):
     db.delete(result)
     db.commit()
     return {"status":"deleted","message":"Product deleted successfully"}
-
