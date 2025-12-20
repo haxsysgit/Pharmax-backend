@@ -11,4 +11,5 @@ dependencies = [
     "uvicorn>=0.38.0",
     "pandas>=2.2.3",
     "alembic>=1.17.2",
+    "requests>=2.32.5",
 ]

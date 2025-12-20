@@ -14,6 +14,7 @@ if str(_BACKEND_ROOT) not in sys.path:
 
 from app.db.session import SessionLocal
 from app.models.product_table import Product, ProductStatus, ProductType
+from app.models.product_unit_table import BaseUnit, ProductUnit
 from app.models.stock_adjustment_table import StockAdjustment, StockAdjustmentReason
 
 
@@ -91,6 +92,42 @@ def _map_product_status(value: str | None) -> ProductStatus:
     if value == "inactive":
         return ProductStatus.INACTIVE
     return ProductStatus.ACTIVE
+
+
+def _infer_base_unit(*, name: str, product_type: ProductType) -> BaseUnit:
+    upper = (name or "").strip().upper()
+
+    if any(token in upper for token in {"DROP", "DROPS"}):
+        return BaseUnit.DROPS
+    if any(token in upper for token in {"SYRUP"}):
+        return BaseUnit.SYRUP
+    if any(token in upper for token in {"SUSP", "SUSPENSION"}):
+        return BaseUnit.SUSPENSION
+    if any(token in upper for token in {"POWDER", "PWD"}):
+        return BaseUnit.POWDER
+    if any(token in upper for token in {"CREAM"}):
+        return BaseUnit.CREAM
+    if any(token in upper for token in {"OINT", "OINTMENT"}):
+        return BaseUnit.OINTMENT
+    if any(token in upper for token in {"GEL"}):
+        return BaseUnit.GEL
+
+    if any(token in upper for token in {"INJ", "INJECTION"}):
+        return BaseUnit.VIAL
+    if any(token in upper for token in {"AMP", "AMPOULE"}):
+        return BaseUnit.AMPOULE
+
+    if any(token in upper for token in {"CAP", "CAPS", "CAPSULE"}):
+        return BaseUnit.CAPSULE
+    if any(token in upper for token in {"TAB", "TABLET"}):
+        return BaseUnit.TABLET
+    if re.search(r"\b\d+\s?MG\b", upper) is not None:
+        return BaseUnit.TABLET
+
+    if product_type == ProductType.MEDICAL:
+        return BaseUnit.TABLET
+
+    return BaseUnit.PACK
 
 
 def _seed_from_csv(
@@ -173,6 +210,7 @@ def _seed_from_csv(
         product = Product(
             sku=sku,
             name=name,
+            base_unit=_infer_base_unit(name=name, product_type=_map_product_type(row.get("TYPE"))),
             brand_name=brand_name,
             supplier_name=supplier_name,
             barcode=barcode,
@@ -188,6 +226,15 @@ def _seed_from_csv(
 
         db.add(product)
         db.flush()  # assigns Product.id without committing
+
+        product_unit = ProductUnit(
+            product_id=product.id,
+            name=product.base_unit,
+            multiplier_to_base=1,
+            price_per_unit=0.0,
+            is_default=True,
+        )
+        db.add(product_unit)
 
         if with_stock:
             raw_stock = row.get("STOCK")
@@ -260,6 +307,7 @@ def main() -> None:
                 product = Product(
                     sku=sku,
                     name=f"Sample Product {i + 1}",
+                    base_unit=random.choice([BaseUnit.PACK, BaseUnit.SACHET, BaseUnit.TABLET]),
                     brand_name=random.choice([None, "Emzor", "GSK", "Pfizer", "Teva"]),
                     supplier_name=random.choice([None, "Main Supplier", "Wholesale A", "Wholesale B"]),
                     barcode=random.choice([None, f"{random.randint(10**11, 10**12 - 1)}"]),
@@ -273,6 +321,15 @@ def main() -> None:
 
                 db.add(product)
                 db.flush()  # assigns Product.id without committing
+
+                product_unit = ProductUnit(
+                    product_id=product.id,
+                    name=product.base_unit,
+                    multiplier_to_base=1,
+                    price_per_unit=0.0,
+                    is_default=True,
+                )
+                db.add(product_unit)
 
                 if args.with_stock:
                     qty = random.randint(args.min_stock, args.max_stock)
