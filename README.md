@@ -1,6 +1,6 @@
-# Vigilis Pharmacy Backend API
+# Pharmax Backend API
 
-Backend for the **Vigilis Pharmacy** system, built with **FastAPI + SQLAlchemy + Alembic**.
+Backend for the **Pharmax** system, built with **FastAPI + SQLAlchemy + Alembic**.
 
 This README documents:
 
