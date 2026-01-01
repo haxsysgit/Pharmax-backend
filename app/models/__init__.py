@@ -3,6 +3,7 @@ from app.models.product_unit_table import BaseUnit, ProductUnit
 from app.models.invoice_table import Invoice, InvoiceStatus
 from app.models.invoice_item_table import InvoiceItem
 from app.models.stock_adjustment_table import StockAdjustment, StockAdjustmentReason
+from app.models.user_table import User, UserRole
 
 __all__ = [
     "Product",
@@ -15,4 +16,6 @@ __all__ = [
     "InvoiceItem",
     "StockAdjustment",
     "StockAdjustmentReason",
+    "User",
+    "UserRole",
 ]
