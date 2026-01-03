@@ -1,0 +1,96 @@
+[01;34m.[0m
+├── admin.py
+├── [01;34mapi[0m
+│   ├── __init__.py
+│   ├── [01;34m__pycache__[0m
+│   │   ├── __init__.cpython-312.pyc
+│   │   └── router.cpython-312.pyc
+│   ├── router.py
+│   └── [01;34mroutes[0m
+│       ├── auth_route.py
+│       ├── __init__.py
+│       ├── invoices_route.py
+│       ├── products_route.py
+│       ├── [01;34m__pycache__[0m
+│       │   ├── auth.cpython-312.pyc
+│       │   ├── auth_route.cpython-312.pyc
+│       │   ├── __init__.cpython-312.pyc
+│       │   ├── invoices_route.cpython-312.pyc
+│       │   ├── items.cpython-312.pyc
+│       │   ├── items_route.cpython-312.pyc
+│       │   ├── products.cpython-312.pyc
+│       │   ├── products_route.cpython-312.pyc
+│       │   ├── users.cpython-312.pyc
+│       │   └── users_route.cpython-312.pyc
+│       └── users_route.py
+├── [01;34mcore[0m
+│   ├── config.py
+│   ├── dependencies.py
+│   ├── __init__.py
+│   ├── [01;34m__pycache__[0m
+│   │   ├── config.cpython-312.pyc
+│   │   ├── __init__.cpython-312.pyc
+│   │   └── security.cpython-312.pyc
+│   └── security.py
+├── [01;34m_db[0m
+│   ├── vigilis.db
+│   └── [00;90mvigilis.db.bak[0m
+├── [01;34mdb[0m
+│   ├── base.py
+│   ├── __init__.py
+│   ├── [01;34m__pycache__[0m
+│   │   ├── base.cpython-312.pyc
+│   │   ├── __init__.cpython-312.pyc
+│   │   └── session.cpython-312.pyc
+│   └── session.py
+├── __init__.py
+├── main.py
+├── [01;34mmodels[0m
+│   ├── __init__.py
+│   ├── invoice_item_table.py
+│   ├── invoice_table.py
+│   ├── product_table.py
+│   ├── product_unit_table.py
+│   ├── [01;34m__pycache__[0m
+│   │   ├── __init__.cpython-312.pyc
+│   │   ├── invoice_item_table.cpython-312.pyc
+│   │   ├── invoice_table.cpython-312.pyc
+│   │   ├── product.cpython-312.pyc
+│   │   ├── product_table.cpython-312.pyc
+│   │   ├── product_unit_table.cpython-312.pyc
+│   │   ├── stock_adjustment.cpython-312.pyc
+│   │   ├── stock_adjustment_table.cpython-312.pyc
+│   │   └── user_table.cpython-312.pyc
+│   ├── stock_adjustment_table.py
+│   └── user_table.py
+├── [01;34m__pycache__[0m
+│   ├── __init__.cpython-312.pyc
+│   └── main.cpython-312.pyc
+├── [01;34mschemas[0m
+│   ├── __init__.py
+│   ├── invoice_item_schema.py
+│   ├── invoice_schema.py
+│   ├── products_schema.py
+│   ├── product_unit_schema.py
+│   ├── [01;34m__pycache__[0m
+│   │   ├── __init__.cpython-312.pyc
+│   │   ├── invoice_item_schema.cpython-312.pyc
+│   │   ├── invoice_schema.cpython-312.pyc
+│   │   ├── product.cpython-312.pyc
+│   │   ├── products_schema.cpython-312.pyc
+│   │   ├── product_unit_schema.cpython-312.pyc
+│   │   ├── stock_adjustment.cpython-312.pyc
+│   │   ├── stock_adjustment_schema.cpython-312.pyc
+│   │   └── user_schema.cpython-312.pyc
+│   ├── stock_adjustment_schema.py
+│   └── user_schema.py
+├── [01;34mservices[0m
+│   ├── __init__.py
+│   ├── [01;34m__pycache__[0m
+│   │   ├── __init__.cpython-312.pyc
+│   │   ├── product_service.cpython-312.pyc
+│   │   └── user_service.cpython-312.pyc
+│   └── user_service.py
+└── stucture.txt
+
+17 directories, 77 files
