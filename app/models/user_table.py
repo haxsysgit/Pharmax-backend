@@ -5,8 +5,7 @@ from uuid import uuid4
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
 from enum import Enum
-
-
+from sqlalchemy.orm import relationship
 
 class UserRole(str, Enum):
     ADMIN = "ADMIN"
@@ -27,6 +26,9 @@ class User(Base):
         SAEnum(UserRole, name="user_role"),
         nullable=False,
     )
+    audit_logs = relationship("AuditLog", back_populates="user")
+    invoices = relationship("Invoice", back_populates="user")
+    adjustments = relationship("StockAdjustment", back_populates="user")
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

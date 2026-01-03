@@ -1,7 +1,7 @@
 from enum import Enum
 from uuid import uuid4
 
-from sqlalchemy import Column, DateTime, Enum as SAEnum, ForeignKey, Integer, String, func
+from sqlalchemy import Column, DateTime, Enum as SAEnum, ForeignKey, Integer, String, func,Index
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
@@ -27,10 +27,17 @@ class StockAdjustment(Base):
     # Optional metadata for traceability (e.g. purchase invoice number, damaged goods note).
     reference = Column(String(255), nullable=True)
     note = Column(String(255), nullable=True)
-    created_by_user_id = Column(String(36), nullable=True)
+    created_by_user_id = Column(String(36), ForeignKey("users.id"),nullable=True)
 
     created_at = Column(DateTime, nullable=False, server_default=func.now())
 
     # Many-to-one relationship: each adjustment belongs to exactly one Product.
     # `back_populates` must match the attribute name on the other model.
     product = relationship("Product", back_populates="adjustments")
+
+    user = relationship("User", back_populates="adjustments")
+
+    __table_args__ = (
+        Index("ix_stock_adjustments_product_id", "product_id"),
+        Index("ix_stock_adjustments_created_at", "created_at"),
+    )
