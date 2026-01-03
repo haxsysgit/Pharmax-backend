@@ -25,6 +25,7 @@ class ReadStockAdjustment(StockAdjustmentBase):
     id: str
     product_id: str
     created_at: datetime
+    created_by_user_id: Optional[str] = None
 
 # Combined response schema for stock adjustments
 class AdjustStockResponse(BaseModel):

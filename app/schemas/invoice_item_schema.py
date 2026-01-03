@@ -28,5 +28,5 @@ class ReadInvoiceItem(BaseModel):
     quantity: int
     unit_price: float
     line_total: float
-    product: ProductMini
-    product_unit: UnitMini
+    product: Optional[ProductMini] = None
+    product_unit: Optional[UnitMini] = None
