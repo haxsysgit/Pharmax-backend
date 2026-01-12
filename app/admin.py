@@ -12,6 +12,8 @@ from app.models.product_table import Product
 from app.models.product_unit_table import ProductUnit
 from app.models.stock_adjustment_table import StockAdjustment
 from app.models.user_table import User, UserRole
+from app.models.audit_log_table import AuditLog
+from app.services.audit_service import AuditService
 from app.services.user_service import UserService
 
 
@@ -34,12 +36,34 @@ class AdminAuth(AuthenticationBackend):
                 return False
 
             request.session["admin_user_id"] = user.id
+            db.commit()  # Commit the audit log from authenticate
             return True
+        except Exception:
+            db.rollback()
+            return False
         finally:
             db.close()
 
     async def logout(self, request: Request) -> bool:
+        user_id = request.session.get("admin_user_id")
         request.session.pop("admin_user_id", None)
+        
+        if user_id:
+            db = SessionLocal()
+            try:
+                AuditService.log_action(
+                    db=db,
+                    user_id=user_id,
+                    action="LOGOUT",
+                    resource_type="USER",
+                    resource_id=user_id,
+                    details={"via": "admin_panel"}
+                )
+                db.commit()
+            except Exception:
+                db.rollback()
+            finally:
+                db.close()
         return True
 
     async def authenticate(self, request: Request) -> bool:
@@ -130,6 +154,18 @@ class InvoiceItemAdmin(ModelView, model=InvoiceItem):
     ]
 
 
+class AuditLogAdmin(ModelView, model=AuditLog):
+    column_list = [
+        AuditLog.id,
+        AuditLog.user_id,
+        AuditLog.action,
+        AuditLog.resource_type,
+        AuditLog.resource_id,
+        AuditLog.details,
+        AuditLog.created_at
+    ]
+
+
 def setup_admin(app, *, secret_key: str) -> Admin:
     authentication_backend = AdminAuth(secret_key=secret_key)
     admin = Admin(app, engine, authentication_backend=authentication_backend)
@@ -140,5 +176,5 @@ def setup_admin(app, *, secret_key: str) -> Admin:
     admin.add_view(StockAdjustmentAdmin)
     admin.add_view(InvoiceAdmin)
     admin.add_view(InvoiceItemAdmin)
-
+    admin.add_view(AuditLogAdmin)
     return admin

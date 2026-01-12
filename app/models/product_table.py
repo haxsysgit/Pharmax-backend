@@ -61,3 +61,6 @@ class Product(Base):
     product_units = relationship(
         "ProductUnit", back_populates="product", cascade="all, delete-orphan"
     )
+    
+    # Relationship to invoice items (for checking delete constraints)
+    invoice_items = relationship("InvoiceItem", back_populates="product")
