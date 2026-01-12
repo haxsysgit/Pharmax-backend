@@ -1,101 +1,106 @@
-from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+
 from app.core.dependencies import require_role
-from app.schemas.stock_adjustment_schema import AdjustStockResponse, CreateStockAdjustment
-from app.schemas.products_schema import CreateProduct, ReadProduct, UpdateProduct
-from app.services.product_service import ProductService
-from app.models.user_table import UserRole
-from app.models.product_table import Product as ProductTable
-from app.models.product_unit_table import ProductUnit
-from app.schemas.product_unit_schema import ReadProductUnit
 from app.db.session import get_db
+from app.models.user_table import UserRole
+from app.models.product_unit_table import ProductUnit
+from app.schemas.product_schema import CreateProduct, ReadProduct, UpdateProduct
+from app.schemas.product_unit_schema import ReadProductUnit
+from app.schemas.stock_adjustment_schema import AdjustStockResponse, CreateStockAdjustment
+from app.services.product_service import ProductService
 
-router = APIRouter()
-
-
-@router.post("/", response_model=ReadProduct)
-def create_product(
-    product: CreateProduct,
-    db: Session = Depends(get_db),
-    current_user = Depends(require_role(UserRole.ADMIN))
-):
-    """Create a new product."""
-    # Check for existing SKU
-    existing = db.query(ProductTable).filter(ProductTable.sku == product.sku).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="Product with this SKU already exists")
-    
-    new_product = ProductService.create_product(
-        db=db,
-        name=product.name,
-        description=product.description,
-        quantity_on_hand=product.quantity_on_hand or 0,
-        user_id=current_user.id
-    )
-    
-    return new_product
+router = APIRouter(prefix="/products", tags=["Products"])
 
 
-@router.get("/", response_model=list[ReadProduct])
+# ================= CREATE =================
+
+@router.post("/", response_model=ReadProduct, status_code=status.HTTP_201_CREATED)
+def create_product(data: CreateProduct, db: Session = Depends(get_db), current_user=Depends(require_role(UserRole.ADMIN)),
+) -> ReadProduct:
+    try:
+        return ProductService.create_product(
+            db=db,
+            data=data,
+            user_id=current_user.id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ================= LIST =================
+
+@router.get("/", response_model=List[ReadProduct])
 def list_products(
-    name: Optional[str] = None,
-    min_stock: Optional[int] = None,
+    name: str | None = None,
+    min_stock: int | None = None,
     limit: int = 50,
     offset: int = 0,
     db: Session = Depends(get_db),
-    current_user = Depends(require_role(UserRole.ADMIN, UserRole.CASHIER, UserRole.SALES))
+    current_user=Depends(
+        require_role(UserRole.ADMIN, UserRole.CASHIER, UserRole.SALES)
+    ),
 ):
-    """List products with optional filtering."""
-    products = ProductService.list_products(
+    return ProductService.list_products(
         db=db,
         name_filter=name,
         min_stock=min_stock,
         limit=limit,
-        offset=offset
+        offset=offset,
     )
-    
-    return products
 
+
+# ================= READ =================
 
 @router.get("/{product_id}", response_model=ReadProduct)
 def get_product(
     product_id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(require_role(UserRole.ADMIN, UserRole.CASHIER, UserRole.SALES))
+    current_user=Depends(
+        require_role(UserRole.ADMIN, UserRole.CASHIER, UserRole.SALES)
+    ),
 ):
-    """Get product by ID."""
     product = ProductService.get_product_by_id(db, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    
     return product
 
 
-@router.get("/{product_id}/units", response_model=list[ReadProductUnit])
+# ================= UNITS =================
+
+@router.get("/{product_id}/units", response_model=List[ReadProductUnit])
 def get_product_units(
     product_id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(require_role(UserRole.ADMIN, UserRole.CASHIER, UserRole.SALES))
+    current_user=Depends(
+        require_role(UserRole.ADMIN, UserRole.CASHIER, UserRole.SALES)
+    ),
 ):
-    """Get product units."""
     product = ProductService.get_product_by_id(db, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    
-    units = db.query(ProductUnit).filter(ProductUnit.product_id == product_id).all()
-    return units
 
+    return (
+        db.query(ProductUnit)
+        .filter(ProductUnit.product_id == product_id)
+        .all()
+    )
+
+
+# ================= STOCK =================
 
 @router.post("/{product_id}/adjust-stock", response_model=AdjustStockResponse)
-def adjust_stock(product_id: str, payload: CreateStockAdjustment, 
-                db: Session = Depends(get_db), current_user = Depends(require_role(UserRole.ADMIN, UserRole.CASHIER))
+def adjust_stock(
+    product_id: str,
+    payload: CreateStockAdjustment,
+    db: Session = Depends(get_db),
+    current_user=Depends(require_role(UserRole.ADMIN, UserRole.CASHIER)),
 ):
-    """Adjust product stock."""
     product = ProductService.get_product_by_id(db, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    
+
     try:
         adjustment = ProductService.adjust_stock(
             db=db,
@@ -104,63 +109,55 @@ def adjust_stock(product_id: str, payload: CreateStockAdjustment,
             reason=payload.reason.value,
             reference=payload.reference,
             note=payload.note,
-            user_id=current_user.id
+            user_id=current_user.id,
         )
-        
-        return {"product": product, "adjustment": adjustment}
-        
+        return AdjustStockResponse(product=product, adjustment=adjustment)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
+# ================= UPDATE =================
+
 @router.patch("/{product_id}", response_model=ReadProduct)
 def update_product(
     product_id: str,
-    product_update: UpdateProduct,
+    payload: UpdateProduct,
     db: Session = Depends(get_db),
-    current_user = Depends(require_role(UserRole.ADMIN))
+    current_user=Depends(require_role(UserRole.ADMIN)),
 ):
-    """Update product details."""
     product = ProductService.get_product_by_id(db, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    
-    # Only update provided fields
-    update_data = product_update.model_dump(exclude_unset=True)
+
+    update_data = payload.model_dump(exclude_unset=True)
     if not update_data:
         raise HTTPException(status_code=400, detail="No data to update")
-    
-    updated_product = ProductService.update_product(
+
+    return ProductService.update_product(
         db=db,
         product=product,
-        name=update_data.get("name"),
-        description=update_data.get("description"),
-        user_id=current_user.id
+        updates=update_data,
+        user_id=current_user.id,
     )
-    
-    return updated_product
 
 
-@router.delete("/{product_id}")
+# ================= DELETE =================
+
+@router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_product(
     product_id: str,
     db: Session = Depends(get_db),
-    current_user = Depends(require_role(UserRole.ADMIN))
+    current_user=Depends(require_role(UserRole.ADMIN)),
 ):
-    """Delete a product."""
     product = ProductService.get_product_by_id(db, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    
-    # Check if product has invoice history
+
     from app.models.invoice_item_table import InvoiceItem
-    invoice_ref = db.query(InvoiceItem).filter(InvoiceItem.product_id == product_id).first()
-    if invoice_ref:
+
+    if (db.query(InvoiceItem).filter(InvoiceItem.product_id == product_id).first()):
         raise HTTPException(
             status_code=400,
-            detail="Cannot delete product with invoice history"
-        )
-    
+            detail="Cannot delete product with invoice history",)
+
     ProductService.delete_product(db=db, product=product, user_id=current_user.id)
-    
-    return {"status": "deleted", "message": "Product deleted successfully", "product": product}

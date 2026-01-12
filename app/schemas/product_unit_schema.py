@@ -3,12 +3,16 @@ from pydantic import BaseModel
 from app.models.product_unit_table import BaseUnit
 
 
+class CreateProductUnit(BaseModel):
+    unit: BaseUnit
+    price_per_unit: float
+    multiplier_to_base: float
+
+
 class ReadProductUnit(BaseModel):
     model_config = {"from_attributes": True}
 
     id: str
-    product_id: str
-    name: BaseUnit
-    multiplier_to_base: int
+    unit: BaseUnit
     price_per_unit: float
-    is_default: bool
+    multiplier_to_base: float

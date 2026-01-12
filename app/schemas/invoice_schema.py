@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -12,8 +11,8 @@ class ReadInvoice(BaseModel):
 
     id: str
     sold_by_id: str
-    name: Optional[str] = None
+    name: str | None = None
     status: InvoiceStatus
     created_at: datetime
     items: list[ReadInvoiceItem]
-    total_amount: Optional[float] = None
+    total_amount: float | None = None

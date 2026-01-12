@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, Field
 
 
@@ -7,7 +5,7 @@ class AddInvoiceItem(BaseModel):
     product_id: str
     product_unit_id: str
     quantity: int = Field(ge=1)
-    unit_price: Optional[float] = None
+    unit_price: float | None = None
 
 class ProductMini(BaseModel):
     model_config = {"from_attributes": True}
@@ -28,5 +26,5 @@ class ReadInvoiceItem(BaseModel):
     quantity: int
     unit_price: float
     line_total: float
-    product: Optional[ProductMini] = None
-    product_unit: Optional[UnitMini] = None
+    product: ProductMini | None = None
+    product_unit: UnitMini | None = None

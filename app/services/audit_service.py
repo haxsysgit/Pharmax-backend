@@ -1,14 +1,14 @@
 from sqlalchemy.orm import Session
 from app.models.audit_log_table import AuditLog
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 import json
 
 
 class AuditService:
     @staticmethod
     def log_action( db: Session, user_id: str,action: str,
-                resource_type: str,resource_id: Optional[str] = None,
-                details: Optional[Dict[str, Any]] = None
+                resource_type: str,resource_id: str | None = None,
+                details: Dict[str, Any] | None = None
                 ) -> AuditLog:
 
 

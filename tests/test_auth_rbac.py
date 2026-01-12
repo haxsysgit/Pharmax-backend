@@ -6,7 +6,7 @@ Run with: uv run python tests/test_auth_rbac.py
 
 import json
 import requests
-from typing import Dict, Optional
+from typing import Dict
 
 BASE_URL = "http://127.0.0.1:8000"
 
@@ -41,7 +41,7 @@ class AuthTester:
             print(f"❌ Failed to register {role}: {response.text}")
             return None
 
-    def login(self, role: str) -> Optional[str]:
+    def login(self, role: str) -> str | None:
         """Login and return token"""
         if role.lower() not in self.users:
             print(f"❌ No {role} user registered")

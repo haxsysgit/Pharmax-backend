@@ -1,10 +1,9 @@
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel
 
 from app.models.stock_adjustment_table import StockAdjustmentReason
-from app.schemas.products_schema import ReadProduct
+from app.schemas.product_schema import ReadProduct
 
 
 class StockAdjustmentBase(BaseModel):
@@ -13,8 +12,8 @@ class StockAdjustmentBase(BaseModel):
 
     # Why the stock changed (used for audit/reporting).
     reason: StockAdjustmentReason
-    reference: Optional[str] = None
-    note: Optional[str] = None
+    reference: str | None = None
+    note: str | None = None
 
 
 class CreateStockAdjustment(StockAdjustmentBase):
@@ -25,7 +24,7 @@ class ReadStockAdjustment(StockAdjustmentBase):
     id: str
     product_id: str
     created_at: datetime
-    created_by_user_id: Optional[str] = None
+    created_by_user_id: str | None = None
 
 # Combined response schema for stock adjustments
 class AdjustStockResponse(BaseModel):

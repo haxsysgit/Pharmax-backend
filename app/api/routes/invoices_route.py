@@ -8,22 +8,18 @@ from app.schemas.invoice_item_schema import AddInvoiceItem
 from app.models.invoice_table import Invoice as InvoiceTable, InvoiceStatus
 from app.models.user_table import UserRole
 from app.db.session import get_db
-from typing import Optional
 
 
 def _get_invoice_or_404(db: Session, invoice_id: str) -> InvoiceTable:
     """Get invoice with relationships or 404."""
-    invoice = db.query(InvoiceTable).options(
-        selectinload(InvoiceTable.items).selectinload(InvoiceItem.product),
-        selectinload(InvoiceTable.items).selectinload(InvoiceItem.product_unit)
-    ).filter(InvoiceTable.id == invoice_id).first()
+    invoice = InvoiceService.get_invoice_by_id(db, invoice_id)
     
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
     return invoice
 
 
-def _build_invoice_response(invoice: InvoiceTable, name: Optional[str] = None) -> ReadInvoice:
+def _build_invoice_response(invoice: InvoiceTable, name: str | None = None) -> ReadInvoice:
     """Build invoice response with calculated total."""
     total = sum(float(item.quantity * item.unit_price) for item in invoice.items) if invoice.items else 0.0
     
@@ -82,7 +78,7 @@ def add_invoice_item(
 
 @router.get("/all", response_model=list[ReadInvoice])
 def list_invoices(
-    status: Optional[InvoiceStatus] = None,
+    status: InvoiceStatus | None = None,
     limit: int = 50,
     offset: int = 0,
     db: Session = Depends(get_db),
@@ -96,7 +92,7 @@ def list_invoices(
         limit=limit,
         offset=offset
     )
-    
+
     return [_build_invoice_response(inv, name=current_user.full_name) for inv in invoices]
 
 
@@ -120,7 +116,7 @@ def finalize_invoice(
 @router.post("/{invoice_id}/cancel", response_model=ReadInvoice)
 def cancel_invoice(
     invoice_id: str,
-    reason: Optional[str] = None,
+    reason: str | None = None,
     db: Session = Depends(get_db),
     current_user = Depends(require_role(UserRole.ADMIN, UserRole.CASHIER))
 ):
