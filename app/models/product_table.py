@@ -16,7 +16,7 @@ class ProductType(str, Enum):
 
 class ProductStatus(str, Enum):
     ACTIVE = "Active"
-    PENDING = "Pending"
+    DELETED = "Deleted"
     INACTIVE = "Inactive"
 
 
@@ -50,6 +50,8 @@ class Product(Base):
     # Timestamps (created_at set by DB; updated_at auto-updates on change).
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     updated_at = Column(DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+    deleted_at = Column(DateTime, nullable=True, default=None)
+
 
     # One-to-many relationship: one Product has many StockAdjustment rows.
     # `back_populates` must match the attribute name on the other model.

@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models.product_table import ProductStatus, ProductType
 from app.models.product_unit_table import BaseUnit
@@ -34,6 +34,7 @@ class ProductBase(BaseModel):
 
     # Soft state (active/inactive/discontinued) without deleting history.
     status: ProductStatus = ProductStatus.ACTIVE
+    deleted_at: datetime | None = Field(default=None)
 
 
 class CreateProduct(ProductBase):
@@ -73,5 +74,5 @@ class UpdateProduct(BaseModel):
     dispense_without_prescription: bool | None = None
     return_policy: str | None = None
     status: ProductStatus | None = None
-
+    deleted_at: datetime | None = None
 
