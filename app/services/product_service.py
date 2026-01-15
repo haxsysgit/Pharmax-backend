@@ -2,9 +2,10 @@ from sqlalchemy.orm import Session
 from uuid import uuid4
 from typing import List
 from contextlib import contextmanager
+from sqlalchemy import select
 import re
-
-from app.models.product_table import Product, ProductType
+from datetime import datetime, timezone 
+from app.models.product_table import Product, ProductType, ProductStatus
 from app.models.stock_adjustment_table import StockAdjustment
 from app.services.audit_service import AuditService
 from app.models.product_unit_table import BaseUnit
@@ -34,7 +35,8 @@ class ProductService:
         seq = 1
         while True:
             sku = f"{base}-{seq:03d}"
-            exists = db.query(Product.id).filter(Product.sku == sku).first()
+            stmt = select(Product.id).where(Product.sku == sku)
+            exists = db.execute(stmt).scalar_one_or_none()
             if not exists:
                 return sku
             seq += 1
@@ -106,6 +108,7 @@ class ProductService:
 
         db.refresh(product)  # now product.product_units contains the base unit automatically
         return product
+    
 
     # ================= UPDATE =================
 
@@ -127,6 +130,8 @@ class ProductService:
                     resource_type="PRODUCT",
                     resource_id=product.id,
                     details={
+                        "sku": product.sku,
+                        "name": product.name,
                         "old_values": old_values,
                         "new_values": new_values,
                     },
@@ -138,7 +143,7 @@ class ProductService:
     # ================= DELETE =================
 
     @staticmethod
-    def delete_product(db: Session, product: Product, user_id: str | None = None) -> None:
+    def hard_delete_product(db: Session, product: Product, user_id: str | None = None) -> None:
         with ProductService.transaction(db):
             AuditService.log_action(
                 db=db,
@@ -156,6 +161,47 @@ class ProductService:
 
             db.delete(product)
 
+    @staticmethod
+    def soft_delete_product(db: Session, product: Product, user_id: str | None = None) -> None:
+        with ProductService.transaction(db):
+            product.status = ProductStatus.DELETED
+            product.deleted_at = datetime.now(timezone.utc)
+
+            AuditService.log_action(
+                db=db,
+                user_id=user_id,
+                resource_id=product.id,
+                resource_type="PRODUCT",
+                action="SOFT_DELETE",
+                details={
+                    "sku": product.sku,
+                    "name": product.name,
+                    "quantity_at_deletion": product.quantity_on_hand,
+                },
+            )
+
+
+    @staticmethod
+    def restore_product(db: Session, product: Product, user_id: str | None):
+        stmt = select(Product).where(Product.id == product.id, Product.deleted_at.isnot(None))
+        product = db.execute(stmt).scalar_one_or_none()
+
+        with ProductService.transaction(db):
+            product.status = ProductStatus.ACTIVE
+            product.deleted_at = None
+
+            AuditService.log_action(
+                db=db,
+                user_id=user_id,
+                action="RESTORE PRODUCT",
+                resource_id=product.id,
+                resource_type="PRODUCT",
+                details={
+                    "sku": product.sku,
+                    "name": product.name,
+                    "quantity_at_restore": product.quantity_on_hand,
+                }
+            )
     # ================= STOCK =================
 
     @staticmethod
@@ -197,6 +243,8 @@ class ProductService:
                 resource_type="PRODUCT",
                 resource_id=product.id,
                 details={
+                    "sku": product.sku,
+                    "name": product.name,
                     "old_quantity": old_qty,
                     "new_quantity": new_qty,
                     "change_qty": change_qty,
@@ -211,7 +259,9 @@ class ProductService:
 
     @staticmethod
     def get_product_by_id(db: Session, product_id: str) -> Product | None:
-        return db.query(Product).filter(Product.id == product_id).first()
+        stmt = select(Product).where(Product.id == product_id, Product.deleted_at.is_(None))
+        return db.execute(stmt).scalar_one_or_none()
+    
 
     @staticmethod
     def list_products(
@@ -220,13 +270,19 @@ class ProductService:
         min_stock: int | None = None,
         limit: int = 50,
         offset: int = 0,
+        deleted: bool = False,
     ) -> List[Product]:
 
-        query = db.query(Product)
+        if deleted:
+            stmt = select(Product).where(Product.deleted_at.isnot(None))
+        else:
+            stmt = select(Product).where(Product.deleted_at.is_(None))
 
         if name_filter:
-            query = query.filter(Product.name.ilike(f"%{name_filter}%"))
+            stmt = stmt.where(Product.name.ilike(f"%{name_filter}%"))
         if min_stock is not None:
-            query = query.filter(Product.quantity_on_hand >= min_stock)
+            stmt = stmt.where(Product.quantity_on_hand >= min_stock)
 
-        return query.order_by(Product.name).offset(offset).limit(limit).all()
+        stmt = stmt.order_by(Product.name).offset(offset).limit(limit)
+        return db.execute(stmt).scalars().all()
+    
