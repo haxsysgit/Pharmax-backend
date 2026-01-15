@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from app.models.audit_log_table import AuditLog
 from typing import Dict, Any
 import json
+from sqlalchemy import select
 
 
 class AuditService:

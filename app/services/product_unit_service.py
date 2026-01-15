@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session
-from typing import Optional
 from app.models.product_unit_table import ProductUnit
 from app.models.product_table import BaseUnit
 from app.services.audit_service import AuditService
 from contextlib import contextmanager
+from sqlalchemy import select
 
 
 class ProductUnitService:
@@ -27,12 +27,11 @@ class ProductUnitService:
 
         with ProductUnitService.transaction(db):
 
-            exists = (
-                db.query(ProductUnit.id).filter(
-                    ProductUnit.product_id == product_id,
-                    ProductUnit.name == name,
-                ).first()
+            stmt = select(ProductUnit.id).where(
+                ProductUnit.product_id == product_id,
+                ProductUnit.name == name,
             )
+            exists = db.execute(stmt).scalar_one_or_none()
 
             if exists:
                 raise ValueError(f"Unit '{name}' already exists for this product")

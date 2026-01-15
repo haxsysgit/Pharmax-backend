@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import select
 from app.models.invoice_table import Invoice, InvoiceStatus
 from app.models.invoice_item_table import InvoiceItem
 from app.models.product_table import Product
@@ -60,11 +61,13 @@ class InvoiceService:
         if invoice.status != InvoiceStatus.DRAFT:
             raise ValueError("Can only add items to DRAFT invoices")
 
-        product = db.query(Product).filter_by(id=product_id).first()
+        stmt = select(Product).where(Product.id == product_id, Product.deleted_at.is_(None))
+        product = db.execute(stmt).scalar_one_or_none()
         if not product:
             raise ValueError("Product not found")
 
-        unit = db.query(ProductUnit).filter_by(id=product_unit_id).first()
+        stmt = select(ProductUnit).where(ProductUnit.id == product_unit_id)
+        unit = db.execute(stmt).scalar_one_or_none()
         if not unit or unit.product_id != product.id:
             raise ValueError("Invalid product unit")
 
@@ -181,16 +184,13 @@ class InvoiceService:
         offset: int = 0
     ) -> list[Invoice]:
         
-        query = db.query(Invoice)
-        
-        # Filter by user_id only if provided (non-admin users)
-        if user_id:
-            query = query.filter(Invoice.sold_by_id == user_id)
+        stmt = select(Invoice).where(Invoice.sold_by_id == user_id) if user_id else select(Invoice)
         
         if status:
-            query = query.filter(Invoice.status == status)
+            stmt = stmt.where(Invoice.status == status)
         
-        invoices = query.order_by(Invoice.created_at.desc()).offset(offset).limit(limit).all()
+        stmt = stmt.order_by(Invoice.created_at.desc()).offset(offset).limit(limit)
+        invoices = db.execute(stmt).scalars().all()
 
         AuditService.log_action(
             db=db,
@@ -212,10 +212,11 @@ class InvoiceService:
     @staticmethod
     def get_invoice_by_id(db: Session, invoice_id: str) -> Invoice | None:
         """Get invoice by ID with relationships loaded."""
-        return db.query(Invoice).options(
+        stmt = select(Invoice).options(
             selectinload(Invoice.items).selectinload(InvoiceItem.product),
             selectinload(Invoice.items).selectinload(InvoiceItem.product_unit)
-        ).filter(Invoice.id == invoice_id).first()
+        ).where(Invoice.id == invoice_id)
+        return db.execute(stmt).scalar_one_or_none()
 
 
                     
