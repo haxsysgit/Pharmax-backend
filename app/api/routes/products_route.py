@@ -1,6 +1,7 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 from app.core.dependencies import require_role
 from app.db.session import get_db
@@ -10,6 +11,8 @@ from app.schemas.product_schema import CreateProduct, ReadProduct, UpdateProduct
 from app.schemas.product_unit_schema import ReadProductUnit
 from app.schemas.stock_adjustment_schema import AdjustStockResponse, CreateStockAdjustment
 from app.services.product_service import ProductService
+from app.models.invoice_item_table import InvoiceItem
+
 
 router = APIRouter(prefix="/products", tags=["Products"])
 
@@ -37,6 +40,7 @@ def list_products(
     min_stock: int | None = None,
     limit: int = 50,
     offset: int = 0,
+    deleted: bool = False,
     db: Session = Depends(get_db),
     current_user=Depends(
         require_role(UserRole.ADMIN, UserRole.CASHIER, UserRole.SALES)
@@ -48,6 +52,7 @@ def list_products(
         min_stock=min_stock,
         limit=limit,
         offset=offset,
+        deleted=deleted,
     )
 
 
@@ -81,11 +86,8 @@ def get_product_units(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    return (
-        db.query(ProductUnit)
-        .filter(ProductUnit.product_id == product_id)
-        .all()
-    )
+    stmt = select(ProductUnit).where(ProductUnit.product_id == product_id)
+    return db.execute(stmt).scalars().all()
 
 
 # ================= STOCK =================
@@ -147,17 +149,22 @@ def update_product(
 def delete_product(
     product_id: str,
     db: Session = Depends(get_db),
+    hard_delete: bool = False, 
     current_user=Depends(require_role(UserRole.ADMIN)),
 ):
     product = ProductService.get_product_by_id(db, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    from app.models.invoice_item_table import InvoiceItem
 
-    if (db.query(InvoiceItem).filter(InvoiceItem.product_id == product_id).first()):
+    stmt = select(InvoiceItem).where(InvoiceItem.product_id == product_id)
+    if db.execute(stmt).scalar_one_or_none():
         raise HTTPException(
             status_code=400,
             detail="Cannot delete product with invoice history",)
 
-    ProductService.delete_product(db=db, product=product, user_id=current_user.id)
+    if hard_delete:
+        ProductService.hard_delete_product(db=db, product=product, user_id=current_user.id)
+        return
+
+    ProductService.soft_delete_product(db=db, product=product, user_id=current_user.id)
